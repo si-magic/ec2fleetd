@@ -1,0 +1,121 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Python: ec2fleetd -h",
+			"type": "python",
+			"request": "launch",
+			"cwd": "${workspaceFolder}/src",
+			"module": "ec2fleetd",
+			"args": [ "-h" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd -V",
+			"type": "python",
+			"request": "launch",
+			"cwd": "${workspaceFolder}/src",
+			"module": "ec2fleetd",
+			"args": [ "-V" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd -hV",
+			"type": "python",
+			"request": "launch",
+			"cwd": "${workspaceFolder}/src",
+			"module": "ec2fleetd",
+			"args": [ "-hV" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd w/ test userdata",
+			"type": "python",
+			"request": "launch",
+			"cwd": "${workspaceFolder}/src",
+			"module": "ec2fleetd",
+			"args": [ "--userdata=ec2fleetd-dev.jsonc" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd w/ IMDS userdata",
+			"type": "python",
+			"request": "launch",
+			"cwd": "${workspaceFolder}/src",
+			"module": "ec2fleetd",
+			"args": [],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd test 1-a",
+			"type": "python",
+			"request": "launch",
+			"env": { "PYTHONPATH": "${workspaceFolder}/src" },
+			"cwd": "${workspaceFolder}/test/suites/1",
+			"module": "ec2fleetd",
+			"args": [ "--userdata=userdata-a.jsonc" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd test 1-b",
+			"type": "python",
+			"request": "launch",
+			"env": { "PYTHONPATH": "${workspaceFolder}/src" },
+			"cwd": "${workspaceFolder}/test/suites/1",
+			"module": "ec2fleetd",
+			"args": [ "--userdata=userdata-b.jsonc" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd test 2-a",
+			"type": "python",
+			"request": "launch",
+			"env": { "PYTHONPATH": "${workspaceFolder}/src" },
+			"cwd": "${workspaceFolder}/test/suites/2",
+			"module": "ec2fleetd",
+			"args": [ "--userdata=userdata-a.jsonc" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd test 2-b",
+			"type": "python",
+			"request": "launch",
+			"env": { "PYTHONPATH": "${workspaceFolder}/src" },
+			"cwd": "${workspaceFolder}/test/suites/2",
+			"module": "ec2fleetd",
+			"args": [ "--userdata=userdata-b.jsonc" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd test 2-c",
+			"type": "python",
+			"request": "launch",
+			"env": { "PYTHONPATH": "${workspaceFolder}/src" },
+			"cwd": "${workspaceFolder}/test/suites/2",
+			"module": "ec2fleetd",
+			"args": [ "--userdata=userdata-c.jsonc" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+		{
+			"name": "Python: ec2fleetd test 3-a",
+			"type": "python",
+			"request": "launch",
+			"env": { "PYTHONPATH": "${workspaceFolder}/src" },
+			"cwd": "${workspaceFolder}/test/suites/3",
+			"module": "ec2fleetd",
+			"args": [ "--userdata=userdata-a.jsonc" ],
+			"console": "integratedTerminal",
+			"justMyCode": false
+		},
+	]
+}

@@ -1,0 +1,22 @@
+{
+	"$schema": "http://schema.snart.me/fleet-init/json/userdata/0",
+
+	"timeout": 600, // 10 minutes
+
+	"domains": {
+		"A.test.ec2fleetd": {
+			"update-route53": [
+				{
+					"hostedzone": "Z01437442ALJ49K1UHNPR",
+					"name": "first.ec2fleetd.test.",
+					"ttl": 300
+				},
+				{
+					"hostedzone": "Z01437442ALJ49K1UHNPR",
+					"name": "second.ec2fleetd.test.",
+					"ttl": 300
+				}
+			]
+		}
+	}
+}

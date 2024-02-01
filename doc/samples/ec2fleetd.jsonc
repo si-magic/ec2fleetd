@@ -1,0 +1,130 @@
+{
+	"$schema": "http://schema.snart.me/fleet-init/json/userdata/0",
+
+	// "interrupt-detection": {
+	// 	"detect": "poll",
+	// 	"options": { "interval": 5 }
+	// },
+
+	// "timeout": 600, // 10 minutes
+
+	"hostname": "fleet-{ami-i}.acme.example.com",
+
+	"domains": {
+		"mydomain.fleets.example.com": {
+			"attach-volume": [
+				{ // Get from any of the sources
+					"critical": true, // (default: true)should abort on failure?
+					"device": "/dev/xvdf",
+					// in the order of precedence
+					"source": "xpc", // eXisting -> Pool -> Create
+					"volume-id": "vol-NNNNNNNNNNNNNNNNN",
+					/* In a large fleet set up, the thundering herd problem may
+					 * arise. The instance will try the volume at index
+					 * (ami-launch-index % nb_volumes-available). */
+					"pool-name": "POOL_NAME",
+					// "pool-pref": "random",
+					// "pool-pref": "most-recently-used",
+					// "pool-pref": "least-recent-used",
+					// https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/create_volume.html
+					"create": {
+						"Encrypted": true, // the default key will be used
+						"Size": 1024,
+						"SnapshotId": "snap-NNNNNNNNNNNNNNNNN",
+						"VolumeType": "st1",
+						"TagSpecifications": [
+							{
+								"ResourceType": "volume",
+								"Tags": [
+									{
+										"Key": "Name",
+										"Value": "mydomain.fleets.example.com@data"
+									}
+								]
+							}
+						]
+					},
+					"exec": [
+						{
+							"lines": [
+								{
+									"argv": [ "/usr/local/libexec/MYDOMAIN/prep-vol", "{attached_device}", "{attach_op}" ]
+								}
+							]
+						}
+					]
+				}
+			],
+
+			// Static RR updates. Ideal for one-instance fleets.
+			// Use a load balancer attached to an Auto Scaling Group for larger
+			// fleets.
+			"update-route53": [
+				{
+					"critical": true,
+					"hostedzone": "ZZZZZZZZZZZZZZZZZZZZZ",
+					"name": "acme.example.com",
+					"ttl": 120
+				},
+				{
+					"critical": true,
+					"hostedzone": "ZZZZZZZZZZZZZZZZZZZZZ",
+					"name": "acme.example.com",
+					"ttl": 120
+				}
+			],
+
+			"exec": [
+				// (\d+)(?:\s+)?(?:-(?:\s+)?(\d+))?
+				{
+					"on": [ "start" ],
+					"lines": [
+						{
+							"ec": null, // override default: ignore the exit code
+							// "ec": "0 - 1, 5",
+							"argv": [ "/usr/bin/systemctl", "start", "non-critical" ]
+						},
+						{ "argv": [ "/usr/bin/systemctl", "start", "mission-critical" ] }
+					]
+				},
+				{
+					"on": [ "interrupt" ],
+					"lines": [ { "argv": [ "/usr/bin/systemctl", "stop", "a", "b", "c" ] } ]
+				}
+			],
+
+			"notify": [
+				{
+					"backend": "aws-sns", // backend module name
+					"options": { // backend-specific data to be passed to the module
+						"region": "REGION",
+						"topic": "TOPIC_ARN"
+					},
+					// "envelope": {
+					// 	"subject": "SUBJECT",
+					// 	"body": "BODY"
+					// },
+					"matrix": {
+						"fail": { "enabled": true },
+						"start": { "enabled": true },
+						"stop": { "enabled": false },
+						"interrupt": { "enabled": true }
+					}
+				},
+				{
+					// Trigger the fleet manager lambda script
+					"backend": "ans-sqs",
+					"options": {
+						// "region": "REGION",
+						"queue-url": "QUEUE_URL"
+					},
+					"matrix": {
+						"start": { "enabled": true },
+						"stop": { "enabled": true },
+						"interrupt": { "enabled": true }
+					}
+				}
+			]
+		}
+	}
+}

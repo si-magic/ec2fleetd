@@ -1,0 +1,143 @@
+{
+	"$schema": "http://schema.snart.me/fleet-init/json/userdata/0",
+
+	"timeout": 10, // 10 minutes
+
+	"domains": {
+		"A.test.ec2fleetd": {
+			"attach-volume": [
+				{
+					"device": "/dev/xvdj",
+					"source": "pc",
+					"pool-name": "c-1",
+					"create": {
+						"Size": 200,
+						"VolumeType": "st1",
+						"TagSpecifications": [
+							{
+								"ResourceType": "volume",
+								"Tags": [
+									{
+										"Key": "Name",
+										"Value": "A.test.ec2fleetd@c-1"
+									}
+								]
+							}
+						]
+					},
+					"exec": [
+						{
+							"lines": [
+								{
+									"argv": [
+										"../../dump-1.sh",
+										"cache/A.test.ec2fleetd@c-dev-xvdf",
+										"{all_json}"
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"device": "/dev/xvdk",
+					"source": "pc",
+					"pool-name": "c-2",
+					"create": {
+						"Size": 10,
+						"VolumeType": "gp3",
+						"TagSpecifications": [
+							{
+								"ResourceType": "volume",
+								"Tags": [
+									{
+										"Key": "Name",
+										"Value": "A.test.ec2fleetd@c-2"
+									}
+								]
+							}
+						]
+					},
+					"exec": [
+						{
+							"lines": [
+								{
+									"argv": [
+										"../../dump-1.sh",
+										"cache/A.test.ec2fleetd@c-dev-xvdg",
+										"{all_json}"
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"device": "/dev/xvdl",
+					"source": "pc",
+					"pool-name": "c-3",
+					"create": {
+						"Size": 20,
+						"VolumeType": "gp3",
+						"TagSpecifications": [
+							{
+								"ResourceType": "volume",
+								"Tags": [
+									{
+										"Key": "Name",
+										"Value": "A.test.ec2fleetd@c-3"
+									}
+								]
+							}
+						]
+					},
+					"exec": [
+						{
+							"lines": [
+								{
+									"argv": [
+										"../../dump-1.sh",
+										"cache/A.test.ec2fleetd@c-dev-xvdh",
+										"{all_json}"
+									]
+								}
+							]
+						}
+					]
+				}
+			],
+
+			"notify": [
+				{
+					"backend": "ans-sqs",
+					"options": {
+						"queue-url": "QUEUE_URL"
+					},
+					"matrix": {
+						"fail": { "enabled": true },
+						"start": { "enabled": true },
+						"stop": { "enabled": true },
+						"interrupt": { "enabled": true }
+					}
+				},
+				{
+					"backend": "aws-sns",
+					"options": {
+						"region": "REGION",
+						"topic": "TOPIC_ARN"
+					},
+					// "envelope": {
+					// 	"subject": "SUBJECT",
+					// 	"body": "BODY"
+					// },
+					"matrix": {
+						"fail": { "enabled": true },
+						"start": { "enabled": true },
+						"stop": { "enabled": true },
+						"interrupt": { "enabled": true }
+					}
+				}
+			]
+		}
+	}
+}

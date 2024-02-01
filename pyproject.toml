@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ec2fleetd"
+version = "0.0.0"
+authors = [
+  { name="David Timber", email="dxdt@dev.snart.me" },
+]
+description = "EC2 fleet init daemon"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [ "ec2imds", "boto3", "sdnotify", "pyjson5" ]
+
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/si-magic/ec2fleetd"
+Issues = "https://github.com/si-magic/ec2fleetd/issues"

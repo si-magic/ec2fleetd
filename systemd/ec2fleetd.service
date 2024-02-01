@@ -1,0 +1,13 @@
+[Unit]
+Description=EC2Fleetd app-specific instance init
+Requires=network-online.target
+After=network-online.target local-fs.target cloud-init.service
+
+[Service]
+Type=notify
+Environment="EC2FLEETD_PYTHON=python3"
+EnvironmentFile=-/etc/ec2fleetd/ec2fleetd.env
+ExecStart=/bin/env ${EC2FLEETD_PYTHON} -m ec2fleetd
+
+[Install]
+WantedBy=multi-user.target
