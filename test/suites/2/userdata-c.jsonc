@@ -1,5 +1,5 @@
 {
-	"$schema": "http://schema.snart.me/fleet-init/json/userdata/0",
+	"$schema": "http://schema.si-magic.com/fleet-init/json/userdata/0",
 
 	"timeout": 10, // 10 minutes
 

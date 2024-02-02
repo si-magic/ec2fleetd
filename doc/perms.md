@@ -4,9 +4,9 @@
 - EC2 Volume
   - describe_volumes
   - attach_volume
-  - create_volume
-  - delete_volume
   - detach_volume
+  - create_volume: "c" source only
+  - delete_volume: "c" source only
 - EC2 Tags
   - create_tags
   - delete_tags
