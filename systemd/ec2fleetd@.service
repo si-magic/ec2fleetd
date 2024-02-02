@@ -1,5 +1,5 @@
 [Unit]
-Description=EC2Fleetd app-specific instance init w/ config %i
+Description=EC2Fleetd EC2 resource set up automation daemon for config %i
 Requires=network-online.target
 After=network-online.target local-fs.target cloud-init.service
 
@@ -7,7 +7,7 @@ After=network-online.target local-fs.target cloud-init.service
 Type=notify
 Environment="EC2FLEETD_PYTHON=python3"
 EnvironmentFile=-/etc/ec2fleetd/ec2fleetd.env
-ExecStart=/bin/env ${EC2FLEETD_PYTHON} -m ec2fleetd --userdata=/etc/ec2fleetd/%i
+ExecStart=/bin/env ${EC2FLEETD_PYTHON} -m ec2fleetd --userdata=/etc/ec2fleetd/%i.jsonc
 
 [Install]
 WantedBy=multi-user.target

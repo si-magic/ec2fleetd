@@ -1,5 +1,5 @@
 [Unit]
-Description=EC2Fleetd app-specific instance init
+Description=EC2Fleetd EC2 resource set up automation daemon
 Requires=network-online.target
 After=network-online.target local-fs.target cloud-init.service
 
