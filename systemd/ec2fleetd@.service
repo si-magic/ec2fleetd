@@ -8,6 +8,7 @@ Type=notify
 Environment="EC2FLEETD_PYTHON=python3"
 EnvironmentFile=-/etc/ec2fleetd/ec2fleetd.env
 ExecStart=/bin/env ${EC2FLEETD_PYTHON} -m ec2fleetd --userdata=/etc/ec2fleetd/%i.jsonc
+TimeoutStartSec=10min
 
 [Install]
 WantedBy=multi-user.target
