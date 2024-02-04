@@ -12,29 +12,17 @@
 					"backend": "ans-sqs",
 					"options": {
 						"queue-url": "QUEUE_URL"
-					},
-					"matrix": {
-						"fail": { "enabled": true },
-						"start": { "enabled": true },
-						"stop": { "enabled": true },
-						"interrupt": { "enabled": true }
 					}
 				},
 				{
 					"backend": "aws-sns",
+					"matrix": {
+						"started": { "enabled": false },
+						"stopping": { "enabled": false }
+					},
 					"options": {
 						"region": "REGION",
 						"topic": "TOPIC_ARN"
-					},
-					// "envelope": {
-					// 	"subject": "SUBJECT",
-					// 	"body": "BODY"
-					// },
-					"matrix": {
-						"fail": { "enabled": true },
-						"start": { "enabled": true },
-						"stop": { "enabled": true },
-						"interrupt": { "enabled": true }
 					}
 				}
 			]

@@ -229,7 +229,7 @@ def fs_cancel_all ():
 	for f in fs:
 		f.cancel()
 
-def filter_transient_resources (
+def filter_transient_vols (
 		it: Iterable[dict[str, Any]]) -> Iterable[dict[str, Any]]:
 	ret = list[dict[str, Any]]()
 
@@ -240,7 +240,7 @@ def filter_transient_resources (
 				found = True
 				break
 
-		if not found:
+		if not found and vol["State"] == "available":
 			ret.append(vol)
 
 	return ret
@@ -322,6 +322,7 @@ def do_volume (
 
 	def src_vol_p (transc: TransientResourceManager) -> int:
 		nonlocal vid
+		run_cnt = 0
 
 		rsp = client.do_call(
 			"describe_volumes",
@@ -376,19 +377,38 @@ def do_volume (
 					{
 						"Name": "availability-zone",
 						"Values": [ ms.placement_zone ]
-					},
-					{
-						"Name": "status",
-						"Values": [ "available" ]
 					}
 				])
-			vol = filter_transient_resources(rsp["Volumes"])
-			vol_len = len(vol)
 
-			if not vol_len:
+			if not len(rsp["Volumes"]):
 				return -1
-			vol = vol[rng.randint(0, len(vol) - 1)]
-			vid = vol["VolumeId"]
+
+			def pick_vol ():
+				'''
+				Depends on the assumption that the order of volumes in the list are
+				somewhat persistent. Otherwise, the response should be sorted using
+				our own criteria.
+				'''
+				if run_cnt == 0 and ms.instance_index is not None:
+					vols = rsp["Volumes"]
+					vol_len = len(vols)
+
+					ret = vols[ms.instance_index % vol_len]
+					if ret["State"] == "available":
+						return ret["VolumeId"]
+
+				vols = filter_transient_vols(rsp["Volumes"])
+				vol_len = len(vols)
+
+				if False and run_cnt != 0: # FIXME
+					# this case will cause thundering herd. Needs to be fixed.
+					with stdout_lock:
+						sys.stderr.write(
+							"No instance index. Picking random volume from pool")
+
+				return vols[rng.randint(0, vol_len - 1)]["VolumeId"]
+
+			vid = pick_vol()
 
 			try:
 				client.do_call(
@@ -414,7 +434,7 @@ def do_volume (
 
 				return 1
 			except botocore.exceptions.ClientError:
-				continue
+				run_cnt += 1
 
 	def src_vol_c (transc: TransientResourceManager) -> int:
 		nonlocal vid
@@ -712,21 +732,9 @@ def do_notify_domain (dname: str, nlist: Iterable[dict[str, Any]]):
 	session = mk_profile()
 
 	for conf in nlist:
-		matrix = conf["matrix"]
-		match local_ms.daemon_state:
-			case DaemonState.FAILED:
-				event = "fail"
-			case DaemonState.STARTED:
-				event = "start"
-			case DaemonState.STOPPING:
-				event = "stop"
-			case DaemonState.INTERRUPTED:
-				event = "interrupt"
-			case _:
-				event = None
-		assert event
-		row = matrix.get(event)
-		if not (row and row.get("enabled")):
+		matrix = conf.get("matrix", magic.Notify.Matrix.DEFAULT_MATRIX)
+		row = matrix.get(local_ms.daemon_state, magic.Notify.Matrix.DEFAULT_ROW)
+		if not row.get("enabled"):
 			continue
 
 		mail_subject = magic.Notify.SUBJECT
@@ -802,11 +810,12 @@ if fleet_conf.get("timeout") is not None:
 ec = EC.OK
 try:
 	init_start = datetime.datetime.now(datetime.UTC)
-	do_init()
 	do_exec()
+	do_init()
 	signal.alarm(0) # cancels alarm
 
 	ms.daemon_state = DaemonState.STARTED
+	do_exec()
 	report_ready()
 	do_notify()
 	sdn.notify("READY=1")

@@ -1,32 +1,79 @@
 {
 	"$schema": "http://schema.si-magic.com/fleet-init/json/userdata/0",
 
+	/* Just a placeholder in the schema for now. */
 	// "interrupt-detection": {
 	// 	"detect": "poll",
 	// 	"options": { "interval": 5 }
 	// },
 
+	/*
+	 * Domain init timeout seconds
+	 * Not implemented at the moment, but definitely required.
+	 *
+	 * Note: EC2fleetd is still timed by Systemd unit's 'TimeoutStartSec'.
+	 * See the units for the actual value.
+	 */
 	// "timeout": 600, // 10 minutes
 
+	/*
+	 * Transient hostname. See `socket.sethostname()`
+	 */
 	"hostname": "fleet-{ami-i}.acme.example.com",
 
 	"domains": {
+	/*
+	 * An application domain.
+	 *
+	 * A config can have multiple so-called "domains". A separate domain should
+	 * be defined for an application if the instance runs multiple services.
+	 */
 		"mydomain.fleets.example.com": {
+	/* Attach volume(s) in the order of appearance */
 			"attach-volume": [
-				{ // Get from any of the sources
-					"critical": true, // (default: true)should abort on failure?
+				{
+	/*
+	 * (optional) specify whether the volume is mission-critical.
+	 *
+	 * Analogous to "nofail" in fstab, if unset, the daemon does not fail if it
+	 * fails to attach the volume. Defaults to true.
+	 */
+					"critical": true,
+	/*
+	 * The volume attachment destination. Directly corresponds to
+	 * `boto3.client("ec2").attach_volume(Device=)`
+	 *
+	 * NOTE: this parameter is relevant only on Xen instances. Nitro NVMe
+	 * volumes appear as /dev/nvme* so EC2fleetd does not depend on this value.
+	 * For more info, see `ec2fleetd.aws._find_blockdev_by_vid_linux()`
+	 */
 					"device": "/dev/xvdf",
-					// in the order of precedence
+	/*
+	 * Volume source
+	 *
+	 * A string containing characters specifying volume sources in the order of
+	 * in the order of preference.
+	 *
+	 * Volume source characters:
+	 *   - 'x': existing volume by volume id
+	 *   - 'p': existing volume from pool
+	 *   - 'c': created volume using parameters
+	 * In simple words,
+	 *   - "pc": try attaching one from the pool, create one if none
+	 */
 					"source": "xpc", // eXisting -> Pool -> Create
+	/* The volume id for source 'x' */
 					"volume-id": "vol-NNNNNNNNNNNNNNNNN",
-					/* In a large fleet set up, the thundering herd problem may
-					 * arise. The instance will try the volume at index
-					 * (ami-launch-index % nb_volumes-available). */
+	/* The name of the volume pool. */
 					"pool-name": "POOL_NAME",
 					// "pool-pref": "random",
 					// "pool-pref": "most-recently-used",
 					// "pool-pref": "least-recent-used",
-					// https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/create_volume.html
+	/*
+	 * create-volume parameters
+	 *
+	 * https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/create_volume.html
+	 */
 					"create": {
 						"Encrypted": true, // the default key will be used
 						"Size": 1024,
@@ -44,11 +91,24 @@
 							}
 						]
 					},
+	/*
+	 * Execute commands after the volume becomes available to the instance
+	 */
 					"exec": [
 						{
 							"lines": [
 								{
-									"argv": [ "/usr/local/libexec/MYDOMAIN/prep-vol", "{attached_device}", "{attach_op}" ]
+	/*
+	 * Arguments to `exec()` call
+	 *
+	 * A full path to the executable is required. Substitution macro may be
+	 * used. For available macros, see [doc/macros.md].
+	 */
+									"argv": [
+										"/usr/local/libexec/MYDOMAIN/prep-vol",
+										"{attached_device}",
+										"{attach_op}"
+									]
 								}
 							]
 						}
@@ -56,35 +116,81 @@
 				}
 			],
 
-			// Static RR updates. Ideal for one-instance fleets.
-			// Use a load balancer attached to an Auto Scaling Group for larger
-			// fleets.
+	/*
+	 * Route 53 updates
+	 *
+	 * Creates A and AAAA record with the "primary addresses" of the instance.
+	 * The "primary addresses" are addresses assigned on the interface at index
+	 * zero("eth0"). If the subnet is IPv4 only, only an A will be created. If
+	 * the subnet is dual-stacked, both A and AAAA will be created.
+	 *
+	 * Since the Spot instance can be interrupted anytime, it's good idea to set
+	 * the TTL as reasonably low as possible.
+	 */
 			"update-route53": [
 				{
-					"critical": true,
 					"hostedzone": "ZZZZZZZZZZZZZZZZZZZZZ",
 					"name": "acme.example.com",
 					"ttl": 120
 				},
 				{
-					"critical": true,
+					"critical": false,
 					"hostedzone": "ZZZZZZZZZZZZZZZZZZZZZ",
-					"name": "acme.example.com",
+					"name": "acme.example.net",
 					"ttl": 120
 				}
 			],
 
 			"exec": [
-				// (\d+)(?:\s+)?(?:-(?:\s+)?(\d+))?
 				{
+	/*
+	 * Exit code spec
+	 *
+	 * The exit code spec represents lists and/or ranges of exit code to regard
+	 * as successful exit.
+	 * For example, tar command can return 1. Another example is the exit code
+	 * of a command is not important.
+	 *
+	 * null: disable the exit code check
+	 * 0: only zero is acceptable (default)
+	 * 0,1: zero and one are treated as success
+	 * 0-127: treat as success if the program managed to return on its own
+	 * 0-1,142: exit code 0 and 2 and terminated by SIGALRM
+	 */
+					"ec": "0",
+	/*
+	 * The event specifier
+	 *
+	 * Limits the exec to specified events. If omitted, the exec entry will be
+	 * run for all events.
+	 *
+	 * Events(`ec2fleetd.DaemonState`):
+	 *   - "failed"
+	 *   - "starting"
+	 *   - "started"
+	 *   - "stopping"
+	 *   - "interrupted"
+	 * Flow: "starting" -> "failed"|"started"[ -> "stopping"|"interrupted" ]
+	 */
 					"on": [ "started" ],
 					"lines": [
 						{
-							"ec": null, // override default: ignore the exit code
-							// "ec": "0 - 1, 5",
-							"argv": [ "/usr/bin/systemctl", "start", "non-critical" ]
+							// overrides the default: the exit code check is off
+							"ec": null,
+							"argv": [
+								"/usr/bin/systemctl",
+								"start",
+								"non-critical"
+							]
 						},
-						{ "argv": [ "/usr/bin/systemctl", "start", "mission-critical" ] }
+						{
+							// the "ec" is inherited
+							"argv": [
+								"/usr/bin/systemctl",
+								"start",
+								"mission-critical"
+							]
+						}
 					]
 				},
 				{
@@ -93,35 +199,48 @@
 				}
 			],
 
+	/* Notify daemon state change */
 			"notify": [
 				{
-					"backend": "aws-sns", // backend module name
-					"options": { // backend-specific data to be passed to the module
-						"region": "REGION",
-						"topic": "TOPIC_ARN"
-					},
+					"backend": "aws-sns",
+	/*
+	 * Notification contents settings
+	 *
+	 * Substitution macros can be used. Default values defined in
+	 * `ec2fleetd.magic.Notify`
+	 */
 					// "envelope": {
 					// 	"subject": "SUBJECT",
 					// 	"body": "BODY"
 					// },
+	/*
+	 * The event specifier
+	 *
+	 * Defaults to the matrix that enables all events. You may want to disable
+	 * "stopping" because the event is fired only when you manually terminate
+	 * the daemon.
+	 *
+	 * Events(`ec2fleetd.DaemonState` excluding "starting"):
+	 *   - "failed"
+	 *   - "started"
+	 *   - "stopping"
+	 *   - "interrupted"
+	 * Flow: "starting" -> "failed"|"started"[ -> "stopping"|"interrupted" ]
+	 */
 					"matrix": {
-						"fail": { "enabled": true },
-						"start": { "enabled": true },
-						"stop": { "enabled": false },
-						"interrupt": { "enabled": true }
+						"stopping": { "enabled": false }
+					},
+	/* backend-specific parameters to be passed to the module */
+					"options": {
+						"region": "REGION",
+						"topic": "TOPIC_ARN"
 					}
 				},
+				// Trigger the fleet manager lambda script for all events
 				{
-					// Trigger the fleet manager lambda script
 					"backend": "ans-sqs",
 					"options": {
-						// "region": "REGION",
 						"queue-url": "QUEUE_URL"
-					},
-					"matrix": {
-						"start": { "enabled": true },
-						"stop": { "enabled": true },
-						"interrupt": { "enabled": true }
 					}
 				}
 			]

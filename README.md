@@ -20,7 +20,7 @@ EC2fleetd is made to address the following issues:
 The usual flow would be
 
 1. An instance is launched in the fleet
-1. The instance boots up the root volume and starts EC2fleetd
+1. The instance boots up and starts EC2fleetd
 1. EC2fleetd attaches an existing volume containing application data already
    populated by the previous instance. Or create a volume from the snapshot if
    required
@@ -146,12 +146,6 @@ A Minecraft server on spot would look like this.
           "options": { // backend-specific data to be passed to the module
             "region": "REGION",
             "topic": "TOPIC_ARN"
-          },
-          "matrix": {
-            "fail": { "enabled": true },
-            "start": { "enabled": true },
-            "stop": { "enabled": false },
-            "interrupt": { "enabled": true }
           }
         }
       ]
@@ -219,12 +213,6 @@ Couple of Bitcoin nodes.
           "options": { // backend-specific data to be passed to the module
             "region": "REGION",
             "topic": "TOPIC_ARN"
-          },
-          "matrix": {
-            "fail": { "enabled": true },
-            "start": { "enabled": true },
-            "stop": { "enabled": false },
-            "interrupt": { "enabled": true }
           }
         }
       ]
@@ -262,7 +250,6 @@ following options.
 - TLS stack
   - Do server verification using CA
   - SNI
-  - ALPN
 - Virtual host: HTTP/1.1 "Host" header, SMTP HELO or the likes
 - HMAC
   - OpenVPN tls-ta
@@ -292,9 +279,8 @@ The schema url is only a placeholder at the moment. There is definitely a need
 for one here in the grand scheme of things. See [Quirks](#Quirks) for more.
 
 ### LRU and MRU[^2]
-The current EC2fleetd implementation picks a random volume from the pool. This
-is not ideal in Auto Scaling Groups use cases because spin up time could get
-random, too :)
+The current EC2fleetd implementation picks one volume from the pool based on the
+instance index. Some use cases may benefit from LRU and MRU policies.
 
 ### Unit tests
 If I get paid to finish it, maybe.
