@@ -7,6 +7,20 @@
 
 	"domains": {
 		"A.test.ec2fleetd": {
+			"exec": [
+				{
+					"lines": [
+						{ "argv": [ "/usr/bin/echo", "{daemon_state}" ] }
+					]
+				},
+				{
+					"on": [ "started" ],
+					"lines": [
+						{ "argv": [ "/usr/bin/echo", "ahoy!" ] }
+					]
+				}
+			],
+
 			"notify": [
 				{
 					"backend": "ans-sqs",

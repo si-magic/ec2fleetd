@@ -330,9 +330,9 @@ def init_exec_mat (
 		else:
 			for on in l_event:
 				if on in m:
-					m[on] = l_ec
-				else:
 					m[on] += l_ec
+				else:
+					m[on] = l_ec
 
 	return ( all, m )
 

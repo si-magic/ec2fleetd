@@ -218,14 +218,13 @@ def mk_dexecutor (max_workers = None):
 
 	return ThreadPoolExecutor(max_workers)
 
-fs = list[futures.Future]()
-def fs_wait_all (timeout: float = None):
+def fs_wait_all (fs: list[futures.Future], timeout: float = None):
 	futures.wait(
 		# timeout = timeout, # TODO
 		fs = fs,
 		return_when = futures.ALL_COMPLETED)
 
-def fs_cancel_all ():
+def fs_cancel_all (fs: list[futures.Future]):
 	for f in fs:
 		f.cancel()
 
@@ -380,7 +379,7 @@ def do_volume (
 					}
 				])
 
-			if not len(rsp["Volumes"]):
+			if len(rsp["Volumes"]) == 0:
 				return -1
 
 			def pick_vol ():
@@ -406,9 +405,14 @@ def do_volume (
 						sys.stderr.write(
 							"No instance index. Picking random volume from pool")
 
+				if vol_len == 0:
+					return None
+
 				return vols[rng.randint(0, vol_len - 1)]["VolumeId"]
 
 			vid = pick_vol()
+			if not vid:
+				return -1
 
 			try:
 				client.do_call(
@@ -652,47 +656,57 @@ def do_exec ():
 		return
 
 	event = ms.daemon_state
+	fs = list[futures.Future]()
 
-	with mk_dexecutor() as dpool:
-		for dname, dconf in fleet_conf.get("domains", {}).items():
-			conf = dconf.get("exec")
-			if conf:
-				f = dpool.submit(do_exec_domain, dname, conf, event)
-				fs.append(f)
+	try:
+		with mk_dexecutor() as dpool:
+			for dname, dconf in fleet_conf.get("domains", {}).items():
+				conf = dconf.get("exec")
+				if conf:
+					f = dpool.submit(do_exec_domain, dname, conf, event)
+					fs.append(f)
 
-		for r in fs:
-			r.result()
+			while fs:
+				r = fs.pop(0)
+				r.result()
+	finally:
+		fs_cancel_all(fs)
 
 def do_init ():
 	if not run_param.enable_init:
 		return
 
 	failed_domains = set[str]()
-	with mk_dexecutor() as dpool:
-		for dname, dconf in fleet_conf.get("domains", {}).items():
-			f = dpool.submit(do_domain_init, dname, dconf)
-			fs.append(f)
+	fs = list[futures.Future]()
 
-		try:
-			fs_wait_all()
-		except TimeoutError:
-			# FIXME: never reached as the `fs_wait_all()` call is not timed.
-			fs_cancel_all()
-			# TODO: send SIGALRM to the threads in the pool. No way to do that
-			# with python for now... Shoulda written this in C.
+	try:
+		with mk_dexecutor() as dpool:
+			for dname, dconf in fleet_conf.get("domains", {}).items():
+				f = dpool.submit(do_domain_init, dname, dconf)
+				fs.append(f)
 
-		for r in fs:
-			result = r.result()
-			dname = result[0]
-			tlogs = result[1]
-			exc = result[2]
+			try:
+				fs_wait_all(fs)
+			except TimeoutError:
+				# FIXME: never reached as the `fs_wait_all()` call is not timed.
+				fs_cancel_all(fs)
+				# TODO: send SIGALRM to the threads in the pool. No way to do that
+				# with python for now... Shoulda written this in C.
 
-			ms.transaction_log += tlogs
-			if exc:
-				failed_domains.add(dname)
-				ms.error.append(traceback.format_exception(exc))
+			while fs:
+				r = fs.pop(0)
 
-		fs.clear()
+				result = r.result()
+				dname = result[0]
+				tlogs = result[1]
+				exc = result[2]
+
+				ms.transaction_log += tlogs
+				if exc:
+					failed_domains.add(dname)
+					ms.error.append(traceback.format_exception(exc))
+	finally:
+		fs_cancel_all(fs)
 
 	if failed_domains:
 		msg = '''Domain(s) failed: {dnames}'''.format(
@@ -763,15 +777,21 @@ def do_notify ():
 	if not run_param.enable_notify:
 		return
 
-	with mk_dexecutor() as dpool:
-		for dname, dconf in fleet_conf.get("domains", {}).items():
-			conf = dconf.get("notify")
-			if conf:
-				f = dpool.submit(do_notify_domain, dname, conf)
-				fs.append(f)
+	fs = list[futures.Future]()
 
-		for r in fs:
-			r.result()
+	try:
+		with mk_dexecutor() as dpool:
+			for dname, dconf in fleet_conf.get("domains", {}).items():
+				conf = dconf.get("notify")
+				if conf:
+					f = dpool.submit(do_notify_domain, dname, conf)
+					fs.append(f)
+
+			while fs:
+				r = fs.pop(0)
+				r.result()
+	finally:
+		fs_cancel_all(fs)
 
 def do_poll () -> bool:
 	int_sched = None
@@ -851,7 +871,6 @@ finally:
 			"There should be some resources the daemon was unable to clean up" +
 			os.linesep)
 
-	fs_cancel_all()
 	do_exec()
 	do_notify()
 
